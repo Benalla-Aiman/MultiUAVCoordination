@@ -26,20 +26,24 @@ public class Main extends Application {
         Group root = new Group();
         primaryStage.setTitle("Boids");
 
-
-
         Canvas canvas = new Canvas(800, 600);
 
 
         root.getChildren().add(canvas);
         Scene myScene = new Scene(root);
         Flock f = new Flock();
+        f.addBoid(new Boid(40, 80));
+        f.addBoid(new Boid(40, 40));
+        f.addBoid(new Boid(80, 40));
+        f.addBoid(new Boid(80, 80));
+//        f.addBoid(new Boid(600, 500));
         myScene.addEventFilter(MouseEvent.MOUSE_PRESSED, new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent mouseEvent) {
                 System.out.println("mouse click detected! " + mouseEvent.getSource());
                 System.out.println(mouseEvent.getX()+" "+mouseEvent.getY());
-                f.addBoid(new Boid(mouseEvent.getX(), mouseEvent.getY()));
+                f.setGoal(mouseEvent.getX(), mouseEvent.getY());
+//                f.addBoid(new Boid(mouseEvent.getX(), mouseEvent.getY()));
             }
         });
         final Timeline timeline = new Timeline();
@@ -64,28 +68,30 @@ public class Main extends Application {
 
 
     public static void main(String[] args) {
-
         launch(args);
     }
 }
-class Obstacle{
-    public Obstacle(){
-
-    }
-}
+//class Obstacle{
+//    public Obstacle(){
+//
+//    }
+//}
 class Boid {
     static final Random r = new Random();
-    static final Vec migrate = new Vec(0.1, 0.1);
+//    static final Vec migrate = new Vec(0.1, 0.1);
     static final int size = 3;
 
-    final double maxForce, maxSpeed;
+    static double maxSpeed, maxForce;
 
     Vec location, velocity, acceleration;
+
+    Vec goal = new Vec(100,  100);
+
     private boolean included = true;
 
     Boid(double x, double y) {
         acceleration = new Vec();
-        velocity = new Vec(r.nextInt(5) - 2.5, r.nextInt(5) - 2.5);
+        velocity = new Vec(0, 0);
         location = new Vec(x, y);
         maxSpeed = 2.3;
         maxForce = 0.05;
@@ -117,12 +123,20 @@ class Boid {
         Vec rule1 = separation(boids);
         Vec rule2 = alignment(boids);
         Vec rule3 = cohesion(boids);
-        bounce(boids);
+//        System.out.println(rule1.x + " " + rule1.y);
+//        System.out.println(rule2.x + " " + rule2.y);
+//        System.out.println(rule3.x + " " + rule3.y);
+//        System.out.println();
+//        bounce(boids);
 
         rule1.mult(2.5);
-        rule2.mult(1.5);
-        rule3.mult(1.3);
+        rule2.mult(0.5);
+        rule3.mult(1.8);
 //        bounce.mult(1.5);
+//        System.out.println(rule1.x + " " + rule1.y);
+//        System.out.println(rule2.x + " " + rule2.y);
+//        System.out.println(rule3.x + " " + rule3.y);
+//        System.out.println();
 
         applyForce(rule1);
         applyForce(rule2);
@@ -133,7 +147,7 @@ class Boid {
 
     void view(List<Boid> boids) {
         double sightDistance = 120;
-        double peripheryAngle = PI * 0.85;
+//        double peripheryAngle = PI * 0.85;
 
         for (Boid b : boids) {
             b.included = false;
@@ -145,11 +159,11 @@ class Boid {
             if (d <= 0 || d > sightDistance)
                 continue;
 
-            Vec lineOfSight = Vec.sub(b.location, location);
-
-            double angle = Vec.angleBetween(lineOfSight, velocity);
-            if (angle < peripheryAngle)
-                b.included = true;
+//            Vec lineOfSight = Vec.sub(b.location, location);
+//
+//            double angle = Vec.angleBetween(lineOfSight, velocity);
+//            if (angle < peripheryAngle)
+            b.included = true;
         }
     }
     Vec separation(java.util.List<Boid> boids) {
@@ -220,6 +234,7 @@ class Boid {
         for (Boid b : boids) {
             if (!b.included)
                 continue;
+//            System.out.println("include");
 
             double d = Vec.dist(location, b.location);
             if (d > preferredDist) {
@@ -233,55 +248,65 @@ class Boid {
         }
         return target;
     }
-    void bounce(java.util.List<Boid> boids){
-        double ForceX=0, ForceY=0;
-        if(location.x<=30 && velocity.x<0){
-//            ForceX = 10;
-            ForceX = Math.abs(velocity.x);
-        }
-        else if(location.x>=755 && velocity.x>0){
-//            ForceX=-10;
-            ForceX = -Math.abs(velocity.x);
-        }
-        if(location.y<=30 && velocity.y<0){
-//            ForceY = 10;
-            ForceY = Math.abs(velocity.y);
-        }
-        else if(location.y>=555 && velocity.y>0){
-//            ForceY = -10;
-            ForceY = -Math.abs(velocity.y);
-        }
-
-        Vec v = new Vec(ForceX, ForceY);
-        v.mult(1.2);
-        this.applyForce(v);
-        for (Boid b : boids) {
-            if (!b.included)
-                continue;
-
-            b.applyForce(v);
-        }
-    }
     void draw(GraphicsContext gc, int w, int h) {
 
         gc.fillOval(location.x, location.y, 15, 15);
     }
 
-    void run(GraphicsContext gc, List<Boid> boids, int w, int h) {
-
-        flock(boids);
-        update();
+    void run(GraphicsContext gc, List<Boid> boids, int w, int h, boolean head) {
+        if(head){
+            if(Vec.dist(location, goal)<=Boid.maxSpeed/2){
+                velocity=new Vec(0, 0);
+            }
+            else{
+                Vec steer = Vec.sub(goal, location);
+                steer.normalize();
+                steer.mult(Boid.maxSpeed/2);
+                velocity=steer;
+                location.add(velocity);
+            }
+//            acceleration.mult(0);
+        }
+        else{
+//            System.out.println("here");
+            flock(boids);
+            update();
+        }
         draw(gc, w, h);
+    }
+
+    void setGoal(double x, double y){
+        goal.x = x;
+        goal.y = y;
     }
 }
 
 class Flock {
     List<Boid> boids;
+    Vec goal = new Vec(100, 100);
+
 
     void run(GraphicsContext gc, int w, int h) {
         gc.clearRect(0,0, w, h);
-        for (Boid b : boids) {
-            b.run(gc, boids, w, h);
+        double MIN = 10000000;
+        int index = -1;
+        for(int i=0; i<boids.size(); i++){
+            double temp = Vec.dist(boids.get(i).location, goal);
+            if(temp<MIN){
+                MIN = temp;
+                index = i;
+            }
+        }
+        for (int i=0; i<boids.size(); i++) {
+            if(i!=index){
+//                System.out.println(i);
+                boids.get(i).run(gc, boids, w, h, false);
+            }
+            else{
+                boids.get(i).setGoal(goal.x, goal.y);
+                boids.get(i).run(gc, boids, w, h, true);
+
+            }
         }
     }
 
@@ -292,6 +317,11 @@ class Flock {
     void addBoid(Boid b) {
         boids.add(b);
     }
+    void setGoal(double x, double y){
+        goal.x = x;
+        goal.y = y;
+    }
+
 }
 class Vec {
     double x, y;
